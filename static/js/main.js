@@ -114,7 +114,20 @@ function initEventListeners() {
     // Modal action buttons
     elements.btnCopyTweet.addEventListener('click', copyTweetToClipboard);
     elements.btnSendTweet.addEventListener('click', postTweet);
+    
+    // JP2 Skip button
+    const btnSkip = document.getElementById('btn-skip-jp2');
+    if (btnSkip) {
+        btnSkip.addEventListener('click', () => {
+            if (skipAnimationResolve) {
+                skipAnimationResolve();
+                skipAnimationResolve = null;
+            }
+        });
+    }
 }
+
+let skipAnimationResolve = null;
 
 // Fetch Releases from Flask API
 async function fetchReleases(force = false) {
@@ -125,7 +138,15 @@ async function fetchReleases(force = false) {
         elements.jp2Overlay.classList.remove('hidden');
         barkaPlayer.play();
         startSparks();
-        delayPromise = new Promise(resolve => setTimeout(resolve, 5000));
+        delayPromise = new Promise(resolve => {
+            skipAnimationResolve = resolve;
+            setTimeout(() => {
+                if (skipAnimationResolve === resolve) {
+                    resolve();
+                    skipAnimationResolve = null;
+                }
+            }, 5000);
+        });
     } else {
         showLoading(true);
     }
