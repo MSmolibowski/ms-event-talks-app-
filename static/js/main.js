@@ -121,9 +121,11 @@ async function fetchReleases(force = false) {
     let delayPromise = Promise.resolve();
     
     if (force) {
-        // Show spinning John Paul II overlay
+        // Show spinning John Paul II overlay, play Barka synth, and start sparks
         elements.jp2Overlay.classList.remove('hidden');
-        delayPromise = new Promise(resolve => setTimeout(resolve, 3000));
+        barkaPlayer.play();
+        startSparks();
+        delayPromise = new Promise(resolve => setTimeout(resolve, 5000));
     } else {
         showLoading(true);
     }
@@ -140,7 +142,7 @@ async function fetchReleases(force = false) {
             return r.json();
         });
         
-        // Wait for both the network request and the 3-second delay to complete
+        // Wait for both the network request and the 5-second delay to complete
         const [result] = await Promise.all([fetchPromise, delayPromise]);
         
         if (!result.success) {
@@ -163,6 +165,8 @@ async function fetchReleases(force = false) {
         showError(true);
     } finally {
         if (force) {
+            barkaPlayer.stop();
+            stopSparks();
             elements.jp2Overlay.classList.add('hidden');
         } else {
             showLoading(false);
@@ -587,3 +591,186 @@ function postTweet() {
     window.open(tweetUrl, '_blank');
     hideTweetModal();
 }
+
+// Spark Particles Effect Engine
+let sparkAnimationId = null;
+let sparks = [];
+
+function startSparks() {
+    sparks = [];
+    const container = document.body;
+    
+    function createSpark() {
+        const angle = Math.random() * Math.PI * 2;
+        // Spawns sparks in a circle around the center of the viewport (near the JP2 image)
+        const radius = 125; // JP2 image radius is 125px
+        const centerX = window.innerWidth / 2;
+        const centerY = window.innerHeight / 2 - 20; // Caption offset
+        
+        const startX = centerX + Math.cos(angle) * (radius - 20 + Math.random() * 40);
+        const startY = centerY + Math.sin(angle) * (radius - 20 + Math.random() * 40);
+        
+        const spark = document.createElement('div');
+        spark.className = 'jp2-spark';
+        
+        // Random golden/fire colors
+        const colors = [
+            'rgba(251, 191, 36, 0.8)',  // Amber
+            'rgba(249, 115, 22, 0.8)',  // Orange
+            'rgba(239, 68, 68, 0.8)',   // Red
+            'rgba(253, 224, 71, 0.8)',  // Yellow
+            'rgba(255, 255, 255, 0.9)'  // Bright white-gold
+        ];
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        
+        const size = 3 + Math.random() * 6; // random size
+        
+        spark.style.width = `${size}px`;
+        spark.style.height = `${size}px`;
+        spark.style.backgroundColor = color;
+        spark.style.boxShadow = `0 0 10px ${color}, 0 0 20px ${color}`;
+        
+        container.appendChild(spark);
+        
+        // Physics variables for the falling sparks animation
+        sparks.push({
+            element: spark,
+            x: startX,
+            y: startY,
+            vx: (Math.random() - 0.5) * 2 + Math.cos(angle) * 1.5, // moderate horizontal speed
+            vy: (Math.random() - 0.3) * 1 + Math.sin(angle) * 1, // slight initial vertical velocity
+            gravity: 0.18, // positive gravity pulls sparks DOWN the screen
+            alpha: 1,
+            decay: 0.007 + Math.random() * 0.01 // slower decay to allow sparks to fall down the screen
+        });
+    }
+    
+    // Animation loop
+    function updateSparks() {
+        if (!sparkAnimationId) return;
+        
+        // Randomly spawn new sparks
+        if (sparks.length < 150 && Math.random() < 0.7) {
+            createSpark();
+        }
+        
+        for (let i = sparks.length - 1; i >= 0; i--) {
+            const s = sparks[i];
+            s.x += s.vx;
+            s.y += s.vy;
+            s.vy += s.gravity; // Pull downwards
+            s.alpha -= s.decay;
+            
+            if (s.alpha <= 0) {
+                s.element.remove();
+                sparks.splice(i, 1);
+            } else {
+                s.element.style.transform = `translate3d(${s.x}px, ${s.y}px, 0)`;
+                s.element.style.opacity = s.alpha;
+            }
+        }
+        
+        sparkAnimationId = requestAnimationFrame(updateSparks);
+    }
+    
+    sparkAnimationId = requestAnimationFrame(updateSparks);
+}
+
+function stopSparks() {
+    if (sparkAnimationId) {
+        cancelAnimationFrame(sparkAnimationId);
+        sparkAnimationId = null;
+    }
+    
+    // Remove remaining spark DOM nodes
+    sparks.forEach(s => s.element.remove());
+    sparks = [];
+}
+
+// "Barka" Web Audio API Synthesizer Player
+class BarkaPlayer {
+    constructor() {
+        this.ctx = null;
+        this.timeoutIds = [];
+    }
+    
+    initContext() {
+        // Safe standard context fallback
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        this.ctx = new AudioContextClass();
+    }
+    
+    playNote(frequency, startTime, duration) {
+        if (!this.ctx) return;
+        
+        const osc = this.ctx.createOscillator();
+        const gainNode = this.ctx.createGain();
+        
+        // Use soft triangle waves for organ-like sound
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(frequency, startTime);
+        
+        // Soft envelope: attack and decay release
+        gainNode.gain.setValueAtTime(0, startTime);
+        gainNode.gain.linearRampToValueAtTime(0.25, startTime + 0.05); // Attack
+        gainNode.gain.setValueAtTime(0.25, startTime + duration - 0.08);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + duration); // Release
+        
+        osc.connect(gainNode);
+        gainNode.connect(this.ctx.destination);
+        
+        osc.start(startTime);
+        osc.stop(startTime + duration);
+    }
+    
+    play() {
+        this.stop(); // Clear any previous notes
+        this.initContext();
+        
+        if (this.ctx.state === 'suspended') {
+            this.ctx.resume();
+        }
+        
+        // Tempo: 120 BPM -> 1 beat = 0.5s
+        const beat = 0.55;
+        const now = this.ctx.currentTime;
+        
+        // Note frequencies in Hz (octave 4)
+        const notes = {
+            'C': 261.63, 'D': 293.66, 'E': 329.63, 'F': 349.23, 'G': 392.00, 'A': 440.00, 'H': 493.88,
+            'C2': 523.25, 'D2': 587.33, 'E2': 659.25, 'F2': 698.46, 'G2': 783.99, 'A2': 880.00
+        };
+        
+        // Refren "Barki" (O Panie, to Ty na mnie spojrzałeś...)
+        // formatted as: [noteName, beatDuration]
+        const melody = [
+            ['C', 1], ['F', 1], ['A', 1], ['A', 1.5], ['A', 0.5], ['H', 1], ['C2', 1], ['H', 1], ['A', 1],
+            ['C', 1], ['G', 2.5], ['G', 1.5], // O Panie, to Ty na mnie spojrzałeś...
+            ['A', 1], ['F', 1], ['E', 1], ['F', 1.5], ['F', 0.5], ['F', 1], ['G', 1], ['A', 1], ['G', 1],
+            ['F', 1], ['E', 2.5], ['E', 1.5]  // Twoje usta dziś wyrzekły me imię...
+        ];
+        
+        let elapsed = 0.1;
+        melody.forEach(item => {
+            const noteName = item[0];
+            const durationBeats = item[1];
+            const durationSec = durationBeats * beat;
+            const frequency = notes[noteName];
+            
+            this.playNote(frequency, now + elapsed, durationSec);
+            elapsed += durationSec;
+        });
+    }
+    
+    stop() {
+        if (this.ctx) {
+            this.ctx.close();
+            this.ctx = null;
+        }
+        this.timeoutIds.forEach(id => clearTimeout(id));
+        this.timeoutIds = [];
+    }
+}
+
+const barkaPlayer = new BarkaPlayer();
+
