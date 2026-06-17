@@ -213,6 +213,14 @@
         <span id="toast-message">Copied to clipboard!</span>
     </div>
 
+    <!-- Spinning JP2 Overlay -->
+    <div id="jp2-overlay" class="jp2-overlay hidden">
+        <div class="jp2-container">
+            <img src="{{ url_for('static', filename='images/john_paul_ii.jpg') }}" alt="Jan Paweł II" class="jp2-img">
+            <div class="jp2-caption">Pobieranie aktualizacji...</div>
+        </div>
+    </div>
+
     <!-- Frontend logic -->
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>

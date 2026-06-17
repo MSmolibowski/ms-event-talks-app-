@@ -48,7 +48,10 @@ const elements = {
     // Toast
     toast: document.getElementById('toast'),
     toastMessage: document.getElementById('toast-message'),
-    toastIcon: document.getElementById('toast-icon')
+    toastIcon: document.getElementById('toast-icon'),
+    
+    // JP2 Spinner Overlay
+    jp2Overlay: document.getElementById('jp2-overlay')
 };
 
 // Initialize Application
@@ -115,16 +118,33 @@ function initEventListeners() {
 
 // Fetch Releases from Flask API
 async function fetchReleases(force = false) {
-    showLoading(true);
+    let delayPromise = Promise.resolve();
+    
+    if (force) {
+        // Show spinning John Paul II overlay
+        elements.jp2Overlay.classList.remove('hidden');
+        delayPromise = new Promise(resolve => setTimeout(resolve, 3000));
+    } else {
+        showLoading(true);
+    }
+    
     elements.refreshIcon.classList.add('spinning');
     elements.btnRefreshText.textContent = force ? 'Refreshing...' : 'Loading...';
     
     try {
-        const response = await fetch(`/api/releases?refresh=${force}`);
-        const result = await response.json();
+        const fetchPromise = fetch(`/api/releases?refresh=${force}`).then(async r => {
+            if (!r.ok) {
+                const errData = await r.json().catch(() => ({}));
+                throw new Error(errData.error || `Server error: ${r.status}`);
+            }
+            return r.json();
+        });
         
-        if (!response.ok || !result.success) {
-            throw new Error(result.error || `Server returned status ${response.status}`);
+        // Wait for both the network request and the 3-second delay to complete
+        const [result] = await Promise.all([fetchPromise, delayPromise]);
+        
+        if (!result.success) {
+            throw new Error(result.error || `Server returned success false`);
         }
         
         state.releases = result.data.entries;
@@ -142,7 +162,11 @@ async function fetchReleases(force = false) {
         elements.errorMessage.textContent = `Error: ${error.message}. Please check your connection or try again.`;
         showError(true);
     } finally {
-        showLoading(false);
+        if (force) {
+            elements.jp2Overlay.classList.add('hidden');
+        } else {
+            showLoading(false);
+        }
         elements.refreshIcon.classList.remove('spinning');
         elements.btnRefreshText.textContent = 'Refresh Feed';
     }

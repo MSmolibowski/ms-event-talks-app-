@@ -1066,3 +1066,57 @@ a:hover {
         max-width: 100%;
     }
 }
+
+/* JP2 Overlay & Spinner Styles */
+.jp2-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(9, 13, 22, 0.95);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(12px);
+    transition: opacity 0.3s ease;
+}
+
+.jp2-container {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.jp2-img {
+    width: 250px;
+    height: 250px;
+    border-radius: 50%;
+    border: 6px solid var(--color-primary);
+    box-shadow: 0 0 40px rgba(59, 130, 246, 0.6);
+    animation: jp2-spin 1.5s linear infinite;
+    object-fit: cover;
+}
+
+.jp2-caption {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: 0.05em;
+    animation: pulse 1.5s ease-in-out infinite;
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+}
+
+@keyframes jp2-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+}
