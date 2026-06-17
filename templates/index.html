@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BigQuery Release Notes Dashboard</title>
+    <!-- Google Fonts: Inter & Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom stylesheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar / Brand panel -->
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="brand-icon">
+                    <i class="fa-solid fa-database"></i>
+                </div>
+                <div class="brand-text">
+                    <h1>BigQuery</h1>
+                    <span>Release Monitor</span>
+                </div>
+            </div>
+
+            <div class="stats-panel">
+                <h3><i class="fa-solid fa-chart-simple"></i> Quick Statistics</h3>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="stat-total">0</div>
+                        <div class="stat-label">Total Items</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="stat-features">0</div>
+                        <div class="stat-label">Features</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="stat-issues">0</div>
+                        <div class="stat-label">Issues</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="stat-others">0</div>
+                        <div class="stat-label">Others</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="filters-section">
+                <h3><i class="fa-solid fa-filter"></i> Filters</h3>
+                
+                <div class="search-box">
+                    <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                    <input type="text" id="search-input" placeholder="Search updates...">
+                </div>
+
+                <div class="filter-group">
+                    <label>Update Type</label>
+                    <div class="checkbox-group">
+                        <label class="custom-checkbox">
+                            <input type="checkbox" class="type-filter" value="feature" checked>
+                            <span class="checkmark type-feature"></span>
+                            <span class="label-text">Features</span>
+                        </label>
+                        <label class="custom-checkbox">
+                            <input type="checkbox" class="type-filter" value="issue" checked>
+                            <span class="checkmark type-issue"></span>
+                            <span class="label-text">Issues</span>
+                        </label>
+                        <label class="custom-checkbox">
+                            <input type="checkbox" class="type-filter" value="deprecation" checked>
+                            <span class="checkmark type-deprecation"></span>
+                            <span class="label-text">Deprecations</span>
+                        </label>
+                        <label class="custom-checkbox">
+                            <input type="checkbox" class="type-filter" value="change" checked>
+                            <span class="checkmark type-change"></span>
+                            <span class="label-text">Changes</span>
+                        </label>
+                        <label class="custom-checkbox">
+                            <input type="checkbox" class="type-filter" value="announcement" checked>
+                            <span class="checkmark type-announcement"></span>
+                            <span class="label-text">Announcements</span>
+                        </label>
+                        <label class="custom-checkbox">
+                            <input type="checkbox" class="type-filter" value="update" checked>
+                            <span class="checkmark type-update"></span>
+                            <span class="label-text">General Updates</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="filter-actions">
+                    <button id="btn-select-all-filters" class="btn btn-secondary btn-sm">Select All</button>
+                    <button id="btn-clear-filters" class="btn btn-secondary btn-sm">Clear All</button>
+                </div>
+            </div>
+
+            <div class="sidebar-footer">
+                <p>Data source: <a href="https://docs.cloud.google.com/feeds/bigquery-release-notes.xml" target="_blank">Google Cloud Feed <i class="fa-solid fa-arrow-up-right-from-square"></i></a></p>
+                <p class="copyright">&copy; 2026 BigQuery Release Monitor</p>
+            </div>
+        </aside>
+
+        <!-- Main content -->
+        <main class="main-content">
+            <header class="top-header">
+                <div class="header-left">
+                    <h2>Release Timeline</h2>
+                    <p class="subtitle" id="feed-status">Loading notes...</p>
+                </div>
+                <div class="header-right">
+                    <button id="btn-refresh" class="btn btn-primary">
+                        <i class="fa-solid fa-arrows-rotate refresh-spinner" id="refresh-icon"></i>
+                        <span id="btn-refresh-text">Refresh Feed</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Loading overlay or skeleton -->
+            <div id="loading-container" class="loading-container hidden">
+                <div class="skeleton-entry">
+                    <div class="skeleton-header"></div>
+                    <div class="skeleton-body"></div>
+                </div>
+                <div class="skeleton-entry">
+                    <div class="skeleton-header"></div>
+                    <div class="skeleton-body"></div>
+                </div>
+                <div class="skeleton-entry">
+                    <div class="skeleton-header"></div>
+                    <div class="skeleton-body"></div>
+                </div>
+            </div>
+
+            <!-- Error message -->
+            <div id="error-container" class="error-container hidden">
+                <div class="error-card">
+                    <i class="fa-solid fa-triangle-exclamation error-icon"></i>
+                    <h3>Failed to Load Feed</h3>
+                    <p id="error-message">An error occurred while fetching release notes from Google Cloud.</p>
+                    <button id="btn-retry" class="btn btn-primary">Try Again</button>
+                </div>
+            </div>
+
+            <!-- Notes timeline container -->
+            <div id="notes-container" class="notes-container">
+                <!-- Programmatically populated -->
+            </div>
+        </main>
+    </div>
+
+    <!-- Tweet Modal Dialog -->
+    <div id="tweet-modal" class="modal-overlay hidden">
+        <div class="modal-box">
+            <div class="modal-header">
+                <div class="modal-title-area">
+                    <i class="fa-brands fa-x-twitter tweet-brand-icon"></i>
+                    <h3>Prepare Your Tweet</h3>
+                </div>
+                <button id="btn-close-modal" class="btn-close">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="selected-note-preview">
+                    <span id="tweet-preview-date" class="preview-date">June 15, 2026</span>
+                    <span id="tweet-preview-badge" class="preview-badge badge-feature">Feature</span>
+                    <p id="tweet-preview-source" class="preview-source">Original text: ...</p>
+                </div>
+                
+                <div class="tweet-editor-wrapper">
+                    <label for="tweet-textarea">Compose tweet:</label>
+                    <textarea id="tweet-textarea" rows="5" maxlength="400" placeholder="What is happening?"></textarea>
+                    
+                    <div class="editor-footer">
+                        <div class="char-count-container">
+                            <span id="char-count">0</span> / 280
+                            <div class="char-progress-bar">
+                                <div id="char-progress" class="char-progress-fill"></div>
+                            </div>
+                        </div>
+                        <span id="tweet-warning" class="tweet-warning hidden"><i class="fa-solid fa-circle-info"></i> Exceeds recommended standard 280 characters limit</span>
+                    </div>
+                </div>
+
+                <div class="tweet-tips">
+                    <h4><i class="fa-regular fa-lightbulb"></i> Tweet Writing Tips:</h4>
+                    <ul>
+                        <li>Keep it concise. Highlight the immediate benefit to BigQuery developers.</li>
+                        <li>Use standard hashtags like #BigQuery, #GoogleCloud, #Serverless, #DataAnalytics.</li>
+                        <li>A link back to the official Google Cloud release notes is automatically appended!</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="btn-copy-tweet" class="btn btn-secondary">
+                    <i class="fa-regular fa-copy"></i> Copy Text
+                </button>
+                <button id="btn-send-tweet" class="btn btn-twitter">
+                    <i class="fa-brands fa-x-twitter"></i> Tweet Now
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast hidden">
+        <i class="fa-solid fa-circle-check toast-icon" id="toast-icon"></i>
+        <span id="toast-message">Copied to clipboard!</span>
+    </div>
+
+    <!-- Frontend logic -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
